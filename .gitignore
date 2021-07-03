@@ -1,0 +1,4 @@
+data/
+run_notebooks/
+.ipynb_checkpoints/*
+
