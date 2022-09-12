@@ -1,4 +1,7 @@
 data/
 run_notebooks/
 .ipynb_checkpoints/*
-
+__pycache__
+*.pyc
+*.com.json
+*

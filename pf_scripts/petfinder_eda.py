@@ -388,7 +388,7 @@ class PetFinderEda():
             order by dogs.id 
             """ , self.con)
         logger.debug("Dog Img Shape: ", img_pics_df.shape)
-        selected_pics = img_pics_df.sample(n=4, random_state=123)
+        selected_pics = img_pics_df[img_pics_df['img_loc'] != 'could not save image'].sample(n=4, random_state=123)
         pic_locs = selected_pics['img_loc'].tolist()
         self.output_dfs['Dogs in Imgs'] = selected_pics.drop(['img_loc'], axis=1)
 
