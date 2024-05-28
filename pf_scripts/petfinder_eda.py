@@ -19,7 +19,6 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s :: %(levelname)s :: %(message)s')
-
 def append_images(images, direction='horizontal',
                   bg_color=(255,255,255), aligment='center'):
     """
@@ -180,7 +179,7 @@ def top_org_gb_func(df):
 class PetFinderEda():
     
     def __init__(self, **kwargs):
-        self.db_location = '/home/malcolm/petfinder/data/petfinder.db'
+        self.db_location = self.find_latest_db()
         self.today = datetime.datetime.now() - datetime.timedelta(days=1)
         self.today_str = str(datetime.datetime.now().date())
         self.two_weeks = self.today - datetime.timedelta(days=7)
@@ -201,12 +200,35 @@ class PetFinderEda():
         os.makedirs(self.image_save_folder, exist_ok=True)
         pass
     
-    def create_con(self):
-        self.con = sqlite3.connect(self.db_location)
-        self.cursor = self.con.cursor()
+    def find_latest_db(self, num=-1):
+        all_db_files = os.listdir('/home/malcolm/petfinder/data')
+        elig_db = [x for x in all_db_files if 'petfinder_' in x]
+        latest_db = np.sort(elig_db, )[num]
+        self.latest_db_path = '/home/malcolm/petfinder/data/' + str(latest_db)
+        print(f"latest db file: {self.latest_db_path}") 
+        return(self.latest_db_path)
+    
+    def create_con(self, db_location):
+        con = sqlite3.connect(db_location)
+        self.cursor = con.cursor()
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        logger.info(self.cursor.fetchall())
-        
+        self.tables = [x[0] for x in self.cursor.fetchall()]
+        logger.info(self.tables)
+        self.org_in_db = 'Organizations' in self.tables
+        print("Is organizations in db: ", self.org_in_db)
+        return(con)
+    
+    def get_org_from_prev_db(self, prev_con):
+        db2  = self.find_latest_db(-2)
+        con2 = self.create_con(db2)
+        org  = pd.read_sql("""
+        select * from organizations
+        """, con2)
+
+        org.to_sql('Organizations', prev_con, index=False, if_exists='append')
+        prev_con.commit()
+    
+    
     def get_new_old_existing_dogs(self):
 
         sql2 = f"""
@@ -409,7 +431,10 @@ class PetFinderEda():
         logger.debug('Finished Cleanup ')
         
     def execute(self):
-        self.create_con()
+        self.con = self.create_con(self.db_location)
+        if self.org_in_db == False:
+            self.get_org_from_prev_db(self.con)
+            
         self.get_new_old_existing_dogs()
         self.load_raw_data()
         self.get_top_orgs()
